@@ -1,0 +1,36 @@
+main {
+    width: fit-content;
+    border: 1px solid #333;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+    justify-content: center;
+}
+
+.box {
+    width: 30px;
+    border: 1px solid #333;
+    aspect-ratio: 1/1;
+    animation: 0.1s ease-out;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.box.open {
+    background: #afafaf;
+}
+.box.close:hover {
+    cursor: pointer;
+    background: #d4d4d4;
+}
+.box.close:active {
+    cursor: pointer;
+    background: #999;
+}
