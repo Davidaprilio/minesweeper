@@ -12,6 +12,7 @@ main {
 }
 
 .box {
+    cursor: default;
     width: 30px;
     border: 1px solid #333;
     aspect-ratio: 1/1;
@@ -23,8 +24,23 @@ main {
     justify-content: center;
     align-items: center;
 }
+.box.end {
+    background: #ebebeb;
+}
 .box.open {
     background: #afafaf;
+}
+.box.wrong {
+    background: #ffcece;
+}
+.box.wrong:hover {
+    background: #fdc5c5 !important;
+}
+.box.mark {
+    background: #fff6ce;
+}
+.box.mark:hover {
+    background: #fcf1c1 !important;
 }
 .box.close:hover {
     cursor: pointer;

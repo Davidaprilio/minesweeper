@@ -1,5 +1,6 @@
 const mainBoard = document.querySelector('main')
 const bomCountEl = document.querySelector('#bom-count')
+const BOOM = '💥'
 
 function makeBox() {
     return makeHtmlToDOM(`<div class="box close"></div>`)
@@ -105,7 +106,7 @@ function newGame(w, h, b) {
     logBlueprint(valueData)
 }
 
-newGame(10, 15, 30)
+newGame(10, 15, 10)
 
 function getCoordinate(pos, w) {
     pos++
@@ -142,9 +143,55 @@ function autoOpen(x,y) {
     }
 }
 
-function getBox(x = 2, y = 8) {
-    return document.querySelector(`.row:nth-child(${y+1}) > .box.close:nth-child(${x+1})`)
+function getBox(x = 2, y = 8, query = '.close') {
+    return document.querySelector(`.row:nth-child(${y+1}) > .box${query}:nth-child(${x+1})`)
 }
+
+const random = (min, max) => (Math.round(Math.random() * max) + min)
+
+function showAllBom() {
+    valueData.forEach((r,ir) => {
+        r.forEach((c,ic) => {
+            if (c === '×') {
+                const el = getBox(ic, ir)
+                if (el && !el.classList.contains('mark')) {
+                    setTimeout(() => {
+                        el.innerText = BOOM
+                        el.classList.add('wrong')
+                    }, random(100, 900));
+                }
+            }
+        })
+    })
+    // unmark yang telah di mark tapi bukan bom
+    const boxs = document.querySelectorAll('.box')
+    const marks = document.querySelectorAll('.box.mark')
+    marks.forEach((el) => {
+        const indexBox = Object.values(boxs).indexOf(el)
+        const {y, x} = getCoordinate(indexBox, blueprint[0].length)
+        if (valueData[y] && valueData[y][x] !== '×') {
+            setTimeout(() => {
+                el.classList.remove('mark')
+            }, random(100, 900));
+        }
+    })
+}
+
+async function animateWin() {
+    for (const key in valueData) {
+        valueData[key].forEach((c,ic) => {
+            if (c === '×') {
+                const el = getBox(ic, key, '')
+                if (el) {
+                    el.innerText = BOOM
+                }
+            }
+        })
+        await sleep(300)
+    }
+}
+
+const sleep = ms => new Promise(resolve => setTimeout(() => resolve(), ms))
 
 mainBoard.addEventListener('click', function (e) {
     if (e.target.className === 'box close') {
@@ -153,8 +200,14 @@ mainBoard.addEventListener('click', function (e) {
         const {y, x} = getCoordinate(indexBox, blueprint[0].length)
 
         if (valueData[y][x] === '×') {
-            alert('Yah, kamu kena Bom')
-            newGame(10, 15, 30)
+            e.target.innerText = BOOM
+            e.target.classList.add('wrong')
+            boxs.forEach(el => el.classList.add('end'))
+            showAllBom()
+            setTimeout(() => {
+                alert('Yah, kamu kena Bom')
+                newGame(10, 15, 10)
+            }, 1_200);
             return false
         }
 
@@ -168,8 +221,15 @@ mainBoard.addEventListener('click', function (e) {
         autoOpen(x, y)
 
         bomCountEl.innerText = document.querySelectorAll('.box.close').length;
-        if (bomCountEl.innerText === bomCount) {
-            alert('Yeah kamu menang')
+        if (bomCountEl.innerText == bomCount) {
+            animateWin().then(() => alert('Yeah kamu menang'))
         }
+    }
+})
+
+mainBoard.addEventListener('contextmenu', function(e) {
+    e.preventDefault()
+    if (e.target.classList.contains('box')) {
+        e.target.classList.toggle('mark')
     }
 })
