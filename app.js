@@ -5,8 +5,8 @@ const myModal = new bootstrap.Modal(document.getElementById("modalStart"));
 const temStartGame = document.getElementById("start-game");
 const temEndGame = document.getElementById("end-game");
 const contentMenu = document.getElementById("content-menu");
-let optGamePlay = {}
-
+let optGamePlay = JSON.parse(localStorage.getItem('optGamePlay') || '{}')
+const minute = 60
 const BOOM_EXPLODE = '💥'
 const BOOM = '💣'
 const RED_FLAG = '🚩'
@@ -263,6 +263,10 @@ function handleClickBox(el) {
                     title: "Game Win",
                     reason: "wow, you managed to avoid all the mines"
                 })
+                addHistory({
+                    seconds: minute*2,
+                    optGamePlay,
+                })
                 myModal.show()
             })
         }
@@ -295,7 +299,6 @@ function setViewStartGame() {
 
 function getOptionGamePlay() {
     let difficulty = document.getElementById("difficulty").value
-    let minute = 60
     let seconds = 1000
     let boardSize = [9, 9]
     let bomCount = 0
@@ -345,6 +348,7 @@ function getOptionGamePlay() {
         isCustom,
         seconds,
     }
+    localStorage.setItem('optGamePlay', JSON.stringify(optGamePlay))
     return optGamePlay
 }
 
@@ -355,12 +359,14 @@ function setViewEndGame({title, reason}) {
 }
 
 setViewStartGame()
-renderOptionGamePlay()
+renderOptionGamePlay(optGamePlay)
 myModal._element.addEventListener('shown.bs.modal', async function () {
+    renderHistory()
     while (true) {
         const selEl = document.querySelector('#difficulty')
         if (selEl) {
             selEl.value = optGamePlay.difficulty
+            renderOptionGamePlay(optGamePlay)
             break
         }
         await sleep(100)
@@ -379,6 +385,13 @@ $('#modalStart').on('click', '#start-game', function (e) {
         optGamePlay.boardSize[1], 
         optGamePlay.bomCount
     )
+    timeCounter(optGamePlay.seconds, undefined, () => {
+        setViewEndGame({
+            title: "Game Over",
+            reason: "ohh sorry, out of time"
+        })
+        myModal.show()
+    })
     setTextById('difficulty-game-run', optGamePlay.difficulty)
     setTextById('time-game-run', optGamePlay.seconds)
     setTextById('board-game-run', (optGamePlay.boardSize || [6, 8]).join(' X '))
@@ -398,3 +411,70 @@ function renderOptionGamePlay(opt) {
 $('#modalStart').on('change', '#difficulty', function (e) {
     renderOptionGamePlay(optGamePlay)
 })
+
+function addHistory(value) {
+    const v = JSON.parse(localStorage.getItem('history') || '[]')
+    v.unshift(value)
+    if (value.length > 50) {
+        v.pop()
+    }
+    localStorage.setItem('history', JSON.stringify(v))
+}
+
+function getHistory() {
+    const v = localStorage.getItem('history')
+    if (v) {
+        return JSON.parse(v)
+    }
+    return []
+}
+
+function renderHistory() {
+    const history = getHistory()
+    const historyEl = document.getElementById('tableHistory')
+    historyEl.innerHTML = ''
+    history.forEach((h, i) => {
+        const tr = document.createElement('tr')
+        tr.innerHTML = `
+            <td class="text-center">${h.optGamePlay.difficulty}</td>
+            <td class="text-center">${h.optGamePlay.boardSize.join(' X ')}</td>
+            <td class="text-center">${h.optGamePlay.bomCount}</td>
+            <td class="text-center">${h.seconds}/${h.optGamePlay.time}</td>
+        `
+        historyEl.appendChild(tr)
+    })
+}
+
+// return format hh:mm:ss or mm:ss
+function secondsToTimeStr(seconds) {
+    const date = new Date(null)
+    date.setSeconds(seconds)
+    let time = date.toISOString().slice(11, -5)
+    const timeSplit = time.split(':')
+    if (timeSplit.length === 3 && timeSplit[0] === '00') {
+        timeSplit.shift()
+        time = timeSplit.join(':')
+    }
+    return time
+}
+
+function timeCounter(secTimer, onTick, onEnd) {
+    let seconds = secTimer
+    let v = secTimer === 0 ? 1 : -1
+
+    const interval = setInterval(() => {
+        seconds += v
+        onTick(seconds)
+
+        setTextById('time-game-run', secondsToTimeStr(seconds))
+
+        if (seconds === 0 && secTimer > 0) {
+            clearInterval(interval)
+            onEnd()
+        }
+    }, 1000)
+
+    return interval
+}
+
+renderHistory()
