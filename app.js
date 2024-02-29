@@ -1,6 +1,15 @@
 const mainBoard = document.querySelector('main')
 const bomCountEl = document.querySelector('#bom-count')
-const BOOM = '💥'
+
+const myModal = new bootstrap.Modal(document.getElementById("modalStart"));
+const temStartGame = document.getElementById("start-game");
+const temEndGame = document.getElementById("end-game");
+const contentMenu = document.getElementById("content-menu");
+let optGamePlay = {}
+
+const BOOM_EXPLODE = '💥'
+const BOOM = '💣'
+const RED_FLAG = '🚩'
 
 function makeBox() {
     return makeHtmlToDOM(`<div class="box close"></div>`)
@@ -9,7 +18,7 @@ function makeBox() {
 function createBoard(w, h) {
     mainBoard.innerHTML = ''
     for (let ih = 0; ih < h; ih++) {
-        const r = makeEl('div', 'row')
+        const r = makeEl('div', 'row-box')
         for (let i = 0; i < w; i++) {
             r.appendChild(makeBox())
         }
@@ -106,8 +115,6 @@ function newGame(w, h, b) {
     logBlueprint(valueData)
 }
 
-newGame(10, 15, 10)
-
 function getCoordinate(pos, w) {
     pos++
     const val = pos / w
@@ -119,32 +126,40 @@ function getCoordinate(pos, w) {
 }
 
 function autoOpen(x,y) {
-    if(valueData[y][x] === 0) {
-        getBox(x-1, y)?.click() // m- 
-        getBox(x+1, y)?.click() // m+
 
-        if (valueData[y-1]) getBox(x, y-1)?.click() // t
-        if (valueData[y+1]) getBox(x, y+1)?.click() // b
+    function openBoxIfExist(x, y) {
+        let el = getBox(x, y)
+        if (el) {
+            handleClickBox(el)
+        }
+    }
+
+    if(valueData[y][x] === 0) {
+        openBoxIfExist(x-1, y) // m-
+        openBoxIfExist(x+1, y) // m+
+
+        if (valueData[y-1]) openBoxIfExist(x, y-1) // t
+        if (valueData[y+1]) openBoxIfExist(x, y+1) // b
 
     } else {
         // cek kanan kiri ada 0 tidak
         if (valueData[y][x+1] === 0) {
             // jika t+ bernilai
-            if (valueData[y-1] && valueData[y-1][x+1] > 0) getBox(x, y-1)?.click()
+            if (valueData[y-1] && valueData[y-1][x+1] > 0) openBoxIfExist(x, y-1)
             // jika b+ bernilai
-            if (valueData[y+1] && valueData[y+1][x+1] > 0) getBox(x, y+1)?.click()
+            if (valueData[y+1] && valueData[y+1][x+1] > 0) openBoxIfExist(x, y+1)
         }
         if (valueData[y][x-1] === 0) {
             // jika t- bernilai
-            if (valueData[y-1] && valueData[y-1][x-1] > 0) getBox(x, y-1)?.click()
+            if (valueData[y-1] && valueData[y-1][x-1] > 0) openBoxIfExist(x, y-1)
             // jika b- bernilai
-            if (valueData[y+1] && valueData[y+1][x-1] > 0) getBox(x, y+1)?.click()
+            if (valueData[y+1] && valueData[y+1][x-1] > 0) openBoxIfExist(x, y+1)
         }
     }
 }
 
 function getBox(x = 2, y = 8, query = '.close') {
-    return document.querySelector(`.row:nth-child(${y+1}) > .box${query}:nth-child(${x+1})`)
+    return document.querySelector(`.row-box:nth-child(${y+1}) > .box${query}:nth-child(${x+1})`)
 }
 
 const random = (min, max) => (Math.round(Math.random() * max) + min)
@@ -156,7 +171,7 @@ function showAllBom() {
                 const el = getBox(ic, ir)
                 if (el && !el.classList.contains('mark')) {
                     setTimeout(() => {
-                        el.innerText = BOOM
+                        el.innerText = BOOM_EXPLODE
                         el.classList.add('wrong')
                     }, random(100, 900));
                 }
@@ -178,58 +193,208 @@ function showAllBom() {
 }
 
 async function animateWin() {
-    for (const key in valueData) {
-        valueData[key].forEach((c,ic) => {
+    valueData.forEach((r,ir) => {
+        r.forEach((c,ic) => {
             if (c === '×') {
-                const el = getBox(ic, key, '')
-                if (el) {
-                    el.innerText = BOOM
+                const el = getBox(ic, ir)
+                if (el && !el.classList.contains('mark')) {
+                    setTimeout(() => {
+                        el.innerText = BOOM
+                        el.classList.add('safe')
+                    }, random(100, 900));
                 }
             }
         })
-        await sleep(300)
-    }
+    })
+    // unmark yang telah di mark tapi bukan bom
+    const boxs = document.querySelectorAll('.box')
+    const marks = document.querySelectorAll('.box.mark')
+    marks.forEach((el) => {
+        const indexBox = Object.values(boxs).indexOf(el)
+        const {y, x} = getCoordinate(indexBox, blueprint[0].length)
+        if (valueData[y] && valueData[y][x] !== '×') {
+            setTimeout(() => {
+                el.classList.remove('mark')
+            }, random(100, 900));
+        }
+    })
 }
 
 const sleep = ms => new Promise(resolve => setTimeout(() => resolve(), ms))
 
 mainBoard.addEventListener('click', function (e) {
-    if (e.target.className === 'box close') {
+    handleClickBox(e.target)
+})
+
+function handleClickBox(el) {
+    if (el.className === 'box close') {
         const boxs = document.querySelectorAll('.box')
-        const indexBox = Object.values(boxs).indexOf(e.target)
+        const indexBox = Object.values(boxs).indexOf(el)
         const {y, x} = getCoordinate(indexBox, blueprint[0].length)
 
         if (valueData[y][x] === '×') {
-            e.target.innerText = BOOM
-            e.target.classList.add('wrong')
+            el.innerText = BOOM_EXPLODE
+            el.classList.add('wrong')
             boxs.forEach(el => el.classList.add('end'))
             showAllBom()
             setTimeout(() => {
-                alert('Yah, kamu kena Bom')
-                newGame(10, 15, 10)
+                setViewEndGame({
+                    title: "Game Over",
+                    reason: "You lose, clicked bom"
+                })
+                myModal.show()
             }, 1_200);
             return false
         }
 
 
         // console.log({x,y}, valueData[y][x]);
-        e.target.innerText = valueData[y][x] === 0 ? '' : valueData[y][x];
-        e.target.classList.remove('close')
-        e.target.classList.add('open')
-        e.target.dataset.value = valueData[y][x]
+        el.innerText = valueData[y][x] === 0 ? '' : valueData[y][x];
+        el.classList.remove('close')
+        el.classList.add('open')
+        el.dataset.value = valueData[y][x]
 
         autoOpen(x, y)
 
         bomCountEl.innerText = document.querySelectorAll('.box.close').length;
         if (bomCountEl.innerText == bomCount) {
-            animateWin().then(() => alert('Yeah kamu menang'))
+            animateWin().then(() => {
+                setViewEndGame({
+                    title: "Game Win",
+                    reason: "wow, you managed to avoid all the mines"
+                })
+                myModal.show()
+            })
         }
     }
-})
+}
 
 mainBoard.addEventListener('contextmenu', function(e) {
     e.preventDefault()
     if (e.target.classList.contains('box')) {
         e.target.classList.toggle('mark')
     }
+    e.target.innerText = (e.target.classList.contains('mark')) ? RED_FLAG : ''
+})
+
+newGame(6, 8, 10)
+
+function setToContentMenu(templateEl) {
+    contentMenu.innerHTML = ""
+    const clonedEl = templateEl.cloneNode(true).content;
+    contentMenu.appendChild(clonedEl)
+}
+
+function setTextById(id, text) {
+    document.getElementById(id).textContent = text
+}
+
+function setViewStartGame() {
+    setToContentMenu(temStartGame)
+}
+
+function getOptionGamePlay() {
+    let difficulty = document.getElementById("difficulty").value
+    let minute = 60
+    let seconds = 1000
+    let boardSize = [9, 9]
+    let bomCount = 0
+    isCustom = false
+
+    switch (difficulty) {
+        case "easy":
+            boardSize = [9, 9]
+            bomCount = 10
+            seconds = 0
+            break
+        case "medium":
+            boardSize = [16, 16]
+            bomCount = 40
+            seconds = 0
+            break
+        case "hard":
+            boardSize = [16, 30]
+            bomCount = 99
+            seconds = minute * 5
+            break
+        case "expert":
+            boardSize = [30, 16]
+            bomCount = 99
+            seconds = minute * 10
+            break
+        case "extreme":
+            boardSize = [30, 30]
+            bomCount = 99
+            seconds = minute * 20
+            break
+        default:
+            const boardSizeX = parseInt(document.getElementById("board-size-x").value)
+            const boardSizeY = parseInt(document.getElementById("board-size-y").value)
+            difficulty = 'custom'
+            bomCount = parseInt(document.getElementById("bom-count").value)
+            seconds = parseInt(document.getElementById("time").value)
+            boardSize = [boardSizeX, boardSizeY]
+            isCustom = true
+            break
+    }
+
+    optGamePlay = {
+        difficulty,
+        boardSize,
+        bomCount,
+        isCustom,
+        seconds,
+    }
+    return optGamePlay
+}
+
+function setViewEndGame({title, reason}) {
+    setToContentMenu(temEndGame)
+    setTextById("end-reason-title", title)
+    setTextById("end-reason-desc", reason)
+}
+
+setViewStartGame()
+renderOptionGamePlay()
+myModal._element.addEventListener('shown.bs.modal', async function () {
+    while (true) {
+        const selEl = document.querySelector('#difficulty')
+        if (selEl) {
+            selEl.value = optGamePlay.difficulty
+            break
+        }
+        await sleep(100)
+    }
+})
+myModal.show();
+
+$('#modalStart').on('click', '#restart-game', function (e) {
+    setViewStartGame()
+})
+
+$('#modalStart').on('click', '#start-game', function (e) {
+    getOptionGamePlay()
+    newGame(
+        optGamePlay.boardSize[0], 
+        optGamePlay.boardSize[1], 
+        optGamePlay.bomCount
+    )
+    setTextById('difficulty-game-run', optGamePlay.difficulty)
+    setTextById('time-game-run', optGamePlay.seconds)
+    setTextById('board-game-run', (optGamePlay.boardSize || [6, 8]).join(' X '))
+    setTextById('bom-game-run', optGamePlay.bomCount)
+    myModal.hide();
+})
+
+function renderOptionGamePlay(opt) {
+    if (opt === undefined) {
+        opt = getOptionGamePlay()
+    }
+    setTextById('board-size', opt.boardSize.join(' X '))
+    setTextById('time-play', opt.seconds == 0 ? '∞' : opt.seconds)
+    setTextById('bow-count', opt.bomCount)
+}
+
+$('#modalStart').on('change', '#difficulty', function (e) {
+    renderOptionGamePlay(optGamePlay)
 })

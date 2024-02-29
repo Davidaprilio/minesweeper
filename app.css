@@ -6,9 +6,13 @@ main {
     flex-direction: column;
 }
 
-.row {
+.row-box {
     display: flex;
     justify-content: center;
+}
+
+.row-box * {
+    user-select: none !important;
 }
 
 .box {
@@ -36,11 +40,17 @@ main {
 .box.wrong:hover {
     background: #fdc5c5 !important;
 }
+.box.safe {
+    background: #d3ffce;
+}
+.box.safe:hover {
+    background: #d3ffce !important;
+}
 .box.mark {
-    background: #fff6ce;
+    background: #cedeff;
 }
 .box.mark:hover {
-    background: #fcf1c1 !important;
+    background: #cedeff !important;
 }
 .box.close:hover {
     cursor: pointer;
